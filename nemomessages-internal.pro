@@ -5,7 +5,7 @@ CONFIG += qt plugin hide_symbols
 
 CONFIG += link_pkgconfig
 
-PKGCONFIG += TelepathyQt5 commhistory-qt5
+PKGCONFIG += TelepathyQt5 commhistory-qt5 qtcontacts-sqlite-qt5-extensions
 QT += qml contacts
 target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
 

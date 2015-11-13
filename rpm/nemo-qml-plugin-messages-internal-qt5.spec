@@ -13,6 +13,7 @@ BuildRequires:  pkgconfig(Qt5Gui)
 BuildRequires:  pkgconfig(Qt5Contacts)
 BuildRequires:  pkgconfig(TelepathyQt5)
 BuildRequires:  pkgconfig(commhistory-qt5)
+BuildRequires:  pkgconfig(qtcontacts-sqlite-qt5-extensions)
 
 %description
 QML plugin for internal messages functionality in Nemo

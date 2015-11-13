@@ -10,7 +10,9 @@ Source0:    %{name}-%{version}.tar.bz2
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
 BuildRequires:  pkgconfig(Qt5Gui)
+BuildRequires:  pkgconfig(Qt5Contacts)
 BuildRequires:  pkgconfig(TelepathyQt5)
+BuildRequires:  pkgconfig(commhistory-qt5)
 
 %description
 QML plugin for internal messages functionality in Nemo

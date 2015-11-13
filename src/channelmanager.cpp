@@ -32,6 +32,8 @@
 #include "conversationchannel.h"
 #include <QPointer>
 
+#include <CommHistory/recipient.h>
+
 #include <TelepathyQt/ChannelClassSpec>
 #include <TelepathyQt/ReceivedMessage>
 #include <TelepathyQt/TextChannel>
@@ -91,8 +93,10 @@ void ChannelManager::setHandlerName(const QString &name)
 
 ConversationChannel *ChannelManager::getConversation(const QString &localUid, const QString &remoteUid)
 {
+    const CommHistory::Recipient recipient(localUid, remoteUid);
     foreach (ConversationChannel *channel, channels) {
-        if (channel->localUid() == localUid && channel->remoteUid() == remoteUid)
+        const CommHistory::Recipient channelRecipient(channel->localUid(), channel->remoteUid());
+        if (channelRecipient.matches(recipient))
             return channel;
     }
 

@@ -13,11 +13,13 @@ SOURCES += plugin.cpp \
     src/accountsmodel.cpp \
     src/conversationchannel.cpp \
     src/channelmanager.cpp \
+    src/smscharactercounter.cpp \
     src/declarativeaccount.cpp
 
 HEADERS += src/accountsmodel.h \
     src/conversationchannel.h \
     src/channelmanager.h \
+    src/smscharactercounter.h \
     src/declarativeaccount.h
 
 INSTALLS += target

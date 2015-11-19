@@ -44,6 +44,7 @@
 #include "src/conversationchannel.h"
 #include "src/channelmanager.h"
 #include "src/declarativeaccount.h"
+#include "src/smscharactercounter.h"
 
 class Q_DECL_EXPORT NemoMessagesPlugin : public QQmlExtensionPlugin
 {
@@ -74,6 +75,7 @@ public:
         qmlRegisterType<ChannelManager>(uri, 1, 0, "TelepathyChannelManager");
         qmlRegisterUncreatableType<DeclarativeAccount>(uri, 1, 0, "TelepathyAccount",
                 QLatin1String("Create via AccountsModel"));
+        qmlRegisterType<SmsCharacterCounter>(uri, 1, 0, "SmsCharacterCounter");
     }
 };
 

@@ -40,11 +40,11 @@
 #include <TelepathyQt/Debug>
 #include <TelepathyQt/Types>
 
-#include "src/accountsmodel.h"
-#include "src/conversationchannel.h"
-#include "src/channelmanager.h"
-#include "src/declarativeaccount.h"
-#include "src/smscharactercounter.h"
+#include "accountsmodel.h"
+#include "conversationchannel.h"
+#include "channelmanager.h"
+#include "declarativeaccount.h"
+#include "smscharactercounter.h"
 
 class Q_DECL_EXPORT NemoMessagesPlugin : public QQmlExtensionPlugin
 {

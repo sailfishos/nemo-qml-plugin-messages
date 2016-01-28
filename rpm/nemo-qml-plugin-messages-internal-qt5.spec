@@ -1,7 +1,7 @@
 Name:       nemo-qml-plugin-messages-internal-qt5
 
 Summary:    QML plugin for internal messages functionality
-Version:    0.1.1
+Version:    0.1.18
 Release:    1
 Group:      System/Libraries
 License:    BSD

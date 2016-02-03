@@ -96,8 +96,11 @@ ConversationChannel *ChannelManager::getConversation(const QString &localUid, co
     const CommHistory::Recipient recipient(localUid, remoteUid);
     foreach (ConversationChannel *channel, channels) {
         const CommHistory::Recipient channelRecipient(channel->localUid(), channel->remoteUid());
-        if (channelRecipient.matches(recipient))
+        // Recipient point of view localUid comparison doesn't make sense.
+        // However, when it comes to ConversationChannels the localUid must match.
+        if (channel->localUid() == localUid && channelRecipient.matches(recipient)) {
             return channel;
+        }
     }
 
     ConversationChannel *channel = new ConversationChannel(localUid, remoteUid, this);

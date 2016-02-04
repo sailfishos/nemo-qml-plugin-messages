@@ -79,6 +79,7 @@ signals:
     void requestSucceeded();
     void requestFailed(const QString &errorName, const QString &errorMessage);
     void sendingFailed(int eventId);
+    void sendingSucceeded(int eventId);
 
 private slots:
     void accountReadyForChannel(Tp::PendingOperation *op);
@@ -109,6 +110,7 @@ private:
     void start(Tp::PendingChannelRequest *request);
 
     void sendingFailed(const Tp::MessagePartList &parts);
+    int parseEventId(const Tp::MessagePartList &parts) const;
 };
 
 #endif

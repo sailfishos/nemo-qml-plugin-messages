@@ -264,18 +264,31 @@ void ConversationChannel::sendingFinished(Tp::PendingOperation *op)
 {
     if (op->isError()) {
         Tp::Message msg = static_cast<Tp::PendingSendMessage*>(op)->message();
-        emit sendingFailed(msg.parts());
+        sendingFailed(msg.parts());
+    } else if (op->isValid()) {
+        Tp::Message msg = static_cast<Tp::PendingSendMessage*>(op)->message();
+        int eventId = parseEventId(msg.parts());
+        if (eventId != -1) {
+            emit sendingSucceeded(eventId);
+        }
     }
 }
 
 void ConversationChannel::sendingFailed(const Tp::MessagePartList &msg)
 {
+    int eventId = parseEventId(msg);
+    if (eventId != -1) {
+        emit sendingFailed(eventId);
+    }
+}
+
+int ConversationChannel::parseEventId(const Tp::MessagePartList &parts) const
+{
     bool hasId = false;
-    int eventId = msg.at(0).value("x-commhistory-event-id").variant().toInt(&hasId);
+    int eventId = parts.at(0).value("x-commhistory-event-id").variant().toInt(&hasId);
     if (!hasId)
         eventId = -1;
-
-    emit sendingFailed(eventId);
+    return eventId;
 }
 
 void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,

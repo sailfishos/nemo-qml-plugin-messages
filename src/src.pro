@@ -10,15 +10,17 @@ QT += qml contacts
 target.path = $$[QT_INSTALL_QML]/$$PLUGIN_IMPORT_PATH
 
 SOURCES += plugin.cpp \
-    src/accountsmodel.cpp \
-    src/conversationchannel.cpp \
-    src/channelmanager.cpp \
-    src/declarativeaccount.cpp
+    accountsmodel.cpp \
+    conversationchannel.cpp \
+    channelmanager.cpp \
+    smscharactercounter.cpp \
+    declarativeaccount.cpp
 
-HEADERS += src/accountsmodel.h \
-    src/conversationchannel.h \
-    src/channelmanager.h \
-    src/declarativeaccount.h
+HEADERS += accountsmodel.h \
+    conversationchannel.h \
+    channelmanager.h \
+    smscharactercounter.h \
+    declarativeaccount.h
 
 INSTALLS += target
 

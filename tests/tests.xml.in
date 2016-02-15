@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testdefinition version="1.0">
+   <suite name="nemo-qml-plugin-messages-tests" domain="mw">
+       <description>Messages QML components automatic tests</description>
+       <set name="nemo-qml-plugin-messages-test0" feature="Contacts">
+           <description>Messages QML components automatic tests</description>
+           <case manual="false" name="smscharactercounter">
+               <step>/opt/tests/@PACKAGENAME@/tst_smscharactercounter</step>
+           </case>
+       </set>
+   </suite>
+</testdefinition>

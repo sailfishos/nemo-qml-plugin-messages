@@ -33,6 +33,7 @@
 #define CONVERSATIONCHANNEL_H
 
 #include <QObject>
+#include <QBasicTimer>
 #include <TelepathyQt/PendingChannelRequest>
 #include <TelepathyQt/ChannelRequest>
 #include <TelepathyQt/Channel>
@@ -113,7 +114,12 @@ private:
 
     QList<QPair<Tp::MessagePartList, int> > mPendingMessages;
     QList<QPair<Tp::PendingOperation *, int> > mPendingSends;
+    QList<int> mSentEvents;
     int mSequence;
+
+    QBasicTimer mTimer;
+
+    virtual void timerEvent(QTimerEvent *timerEvent);
 
     void setState(State newState);
     void start(Tp::PendingChannelRequest *request);

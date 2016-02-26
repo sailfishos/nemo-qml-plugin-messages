@@ -302,15 +302,26 @@ void ConversationChannel::sendingFinished(Tp::PendingOperation *op)
     if (!op->isError() && !op->isValid())
         return;
 
+    const bool sendFailed(op->isError());
+
     int eventId = -1;
     QList<QPair<Tp::PendingOperation *, int> >::iterator it = mPendingSends.begin(), end = mPendingSends.end();
     for ( ; it != end; ++it) {
         if ((*it).first == op) {
             eventId = (*it).second;
 
-            // Although we're changing the pending set here, don't emit sequenceChanged
-            // as we're about to update the message status anyway
-            mPendingSends.erase(it);
+            if (sendFailed) {
+                // We're about to report that this event is no longer pending
+                mPendingSends.erase(it);
+            } else if (eventId != -1) {
+                // Don't remove this event from the pending set - it will now be reported as
+                // Sending/Sent by commhistoryd, at which point being part of the pending set
+                // no longer has any relevance.  These events are asynchronous, so don't remove
+                // the item from the pending set until after the status change gets a chance to occur
+                mTimer.stop();
+                mSentEvents.append(eventId);
+                mTimer.start(1000, this);
+            }
             break;
         }
     }
@@ -323,7 +334,7 @@ void ConversationChannel::sendingFinished(Tp::PendingOperation *op)
     if (eventId == -1)
         return;
 
-    if (op->isError()) {
+    if (sendFailed) {
         emit sendingFailed(eventId, this);
 
         // Sending failed - commhistoryd does not update the message in this case, so
@@ -331,11 +342,6 @@ void ConversationChannel::sendingFinished(Tp::PendingOperation *op)
         reportPendingSetChanged();
     } else if (op->isValid()) {
         emit sendingSucceeded(eventId, this);
-
-        // Don't emit sequenceChanged here, as commhistoryd will update the message status
-        // to be 'Sending'.  That write occurs asynchronously, so if we change the pending
-        // set, clients may see the message revert to 'TemporarilyFailed' before the update
-        // to 'Sending' becomes visible
     }
 }
 
@@ -380,3 +386,24 @@ void ConversationChannel::reportPendingSetChanged()
     ++mSequence;
     emit sequenceChanged();
 }
+
+void ConversationChannel::timerEvent(QTimerEvent *timerEvent)
+{
+    if (timerEvent->timerId() == mTimer.timerId()) {
+        mTimer.stop();
+
+        // Remove any sent operations that have expired
+        foreach (int eventId, mSentEvents) {
+            QList<QPair<Tp::PendingOperation *, int> >::iterator it = mPendingSends.begin();
+            while (it != mPendingSends.end()) {
+                if ((*it).second == eventId) {
+                    it = mPendingSends.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+        mSentEvents.clear();
+    }
+}
+

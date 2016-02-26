@@ -112,7 +112,10 @@ ConversationChannel *ChannelManager::getConversation(const QString &localUid, co
 
 void ChannelManager::channelDestroyed(QObject *obj)
 {
-    channels.removeOne(static_cast<ConversationChannel*>(obj));
+    if (ConversationChannel *channel = static_cast<ConversationChannel*>(obj)) {
+        channel->channelDestroyed();
+        channels.removeOne(channel);
+    }
 }
 
 bool TpClientHandler::bypassApproval() const

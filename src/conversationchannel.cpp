@@ -40,7 +40,7 @@
 #include <TelepathyQt/Account>
 
 ConversationChannel::ConversationChannel(const QString &localUid, const QString &remoteUid, QObject *parent)
-    : QObject(parent), mPendingRequest(0), mState(Null), mLocalUid(localUid), mRemoteUid(remoteUid)
+    : QObject(parent), mPendingRequest(0), mState(Null), mLocalUid(localUid), mRemoteUid(remoteUid), mSequence(0)
 {
 }
 
@@ -68,6 +68,23 @@ void ConversationChannel::ensureChannel()
         connect(mAccount->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
                 SLOT(accountReadyForChannel(Tp::PendingOperation*)));
     }
+}
+
+bool ConversationChannel::eventIsPending(int eventId) const
+{
+    QList<QPair<Tp::MessagePartList, int> >::const_iterator mit = mPendingMessages.constBegin(), mend = mPendingMessages.constEnd();
+    for ( ; mit != mend; ++mit) {
+        if ((*mit).second == eventId) {
+            return true;
+        }
+    }
+    QList<QPair<Tp::PendingOperation *, int> >::const_iterator sit = mPendingSends.begin(), send = mPendingSends.end();
+    for ( ; sit != send; ++sit) {
+        if ((*sit).second == eventId) {
+            return true;
+        }
+    }
+    return false;
 }
 
 void ConversationChannel::accountReadyForChannel(Tp::PendingOperation *op)
@@ -150,14 +167,16 @@ void ConversationChannel::channelRequestSucceeded(const Tp::ChannelPtr &channel)
 {
     if (state() > Requested)
         return;
-    Q_ASSERT(!mRequest.isNull());
+
     // Telepathy docs note that channel may be null if the dispatcher is too old.
-    Q_ASSERT(!channel.isNull());
     if (channel.isNull()) {
         qWarning() << Q_FUNC_INFO << "channel is null (dispatcher too old?)";
+        reportPendingFailed();
+        Q_ASSERT(!channel.isNull());
         return;
     }
 
+    Q_ASSERT(!mRequest.isNull());
     setChannel(channel);
 }
 
@@ -183,15 +202,26 @@ void ConversationChannel::channelReady()
 
     setState(Ready);
 
-    if (!mPendingMessages.isEmpty())
+    if (!mPendingMessages.isEmpty()) {
         qDebug() << Q_FUNC_INFO << "Sending" << mPendingMessages.size() << "buffered messages to:" << mRemoteUid;
-    foreach (const Tp::MessagePartList &msg, mPendingMessages)
-        sendMessage(msg);
-    mPendingMessages.clear();
+        QList<QPair<Tp::MessagePartList, int> >::const_iterator it = mPendingMessages.constBegin(), end = mPendingMessages.constEnd();
+        for ( ; it != end; ++it)
+            sendMessage((*it).first, (*it).second, true);
+
+        // We haven't changed the pending set here, as all buffered messages are now pending send operations
+        mPendingMessages.clear();
+    }
 
     // Blindly acknowledge all messages, assuming commhistory handled them
     if (!textChannel->messageQueue().isEmpty())
         textChannel->acknowledge(textChannel->messageQueue());
+}
+
+void ConversationChannel::channelDestroyed()
+{
+    qWarning() << Q_FUNC_INFO;
+
+    reportPendingFailed();
 }
 
 void ConversationChannel::setState(State newState)
@@ -203,10 +233,7 @@ void ConversationChannel::setState(State newState)
     emit stateChanged(newState);
 
     if (mState == Error && !mPendingMessages.isEmpty()) {
-        QList<Tp::MessagePartList> failed = mPendingMessages;
-        mPendingMessages.clear();
-        foreach (const Tp::MessagePartList &msg, failed)
-            sendingFailed(msg);
+        reportPendingFailed();
     }
 }
 
@@ -226,6 +253,8 @@ void ConversationChannel::sendMessage(const QString &text, int eventId)
     Tp::MessagePart header;
     if (eventId >= 0)
         header.insert("x-commhistory-event-id", QDBusVariant(eventId));
+    else
+        qWarning() << "No event Id in message!";
 
     Tp::MessagePart body;
     body.insert("content-type", QDBusVariant(QLatin1String("text/plain")));
@@ -234,18 +263,19 @@ void ConversationChannel::sendMessage(const QString &text, int eventId)
     Tp::MessagePartList parts;
     parts << header << body;
 
-    sendMessage(parts);
+    sendMessage(parts, eventId, false);
 }
 
-void ConversationChannel::sendMessage(const Tp::MessagePartList &parts)
+void ConversationChannel::sendMessage(const Tp::MessagePartList &parts, int eventId, bool alreadyPending)
 {
     if (mChannel.isNull() || !mChannel->isReady()) {
         Q_ASSERT(state() != Ready);
         qDebug() << Q_FUNC_INFO << "Buffering message until channel is ready for:" << mRemoteUid;
-        mPendingMessages.append(parts);
+        mPendingMessages.append(qMakePair(parts, eventId));
         if (mPendingMessages.count() == 1) {
             ensureChannel();
         }
+        reportPendingSetChanged();
         return;
     }
 
@@ -257,28 +287,61 @@ void ConversationChannel::sendMessage(const Tp::MessagePartList &parts)
     }
 
     Tp::PendingSendMessage *msg = textChannel->send(parts);
+    mPendingSends.append(qMakePair(msg, eventId));
     connect(msg, SIGNAL(finished(Tp::PendingOperation*)), SLOT(sendingFinished(Tp::PendingOperation*)));
+
+    if (!alreadyPending) {
+        // If alreadyPending is false, this message was not previously buffered, so
+        // we have now added it to the pending set
+        reportPendingSetChanged();
+    }
 }
 
 void ConversationChannel::sendingFinished(Tp::PendingOperation *op)
 {
-    if (op->isError()) {
-        Tp::Message msg = static_cast<Tp::PendingSendMessage*>(op)->message();
-        sendingFailed(msg.parts());
-    } else if (op->isValid()) {
-        Tp::Message msg = static_cast<Tp::PendingSendMessage*>(op)->message();
-        int eventId = parseEventId(msg.parts());
-        if (eventId != -1) {
-            emit sendingSucceeded(eventId);
+    if (!op->isError() && !op->isValid())
+        return;
+
+    const bool sendFailed(op->isError());
+
+    int eventId = -1;
+    QList<QPair<Tp::PendingOperation *, int> >::iterator it = mPendingSends.begin(), end = mPendingSends.end();
+    for ( ; it != end; ++it) {
+        if ((*it).first == op) {
+            eventId = (*it).second;
+
+            if (sendFailed) {
+                // We're about to report that this event is no longer pending
+                mPendingSends.erase(it);
+            } else if (eventId != -1) {
+                // Don't remove this event from the pending set - it will now be reported as
+                // Sending/Sent by commhistoryd, at which point being part of the pending set
+                // no longer has any relevance.  These events are asynchronous, so don't remove
+                // the item from the pending set until after the status change gets a chance to occur
+                mTimer.stop();
+                mSentEvents.append(eventId);
+                mTimer.start(1000, this);
+            }
+            break;
         }
     }
-}
 
-void ConversationChannel::sendingFailed(const Tp::MessagePartList &msg)
-{
-    int eventId = parseEventId(msg);
-    if (eventId != -1) {
-        emit sendingFailed(eventId);
+    if (eventId == -1) {
+        // If we didn't find the event ID, try to extract the ID from the message content
+        Tp::Message msg = static_cast<Tp::PendingSendMessage*>(op)->message();
+        eventId = parseEventId(msg.parts());
+    }
+    if (eventId == -1)
+        return;
+
+    if (sendFailed) {
+        emit sendingFailed(eventId, this);
+
+        // Sending failed - commhistoryd does not update the message in this case, so
+        // we should report that it is no longer pending
+        reportPendingSetChanged();
+    } else if (op->isValid()) {
+        emit sendingSucceeded(eventId, this);
     }
 }
 
@@ -297,7 +360,50 @@ void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,
     Q_UNUSED(proxy);
     qDebug() << "Channel invalidated:" << errorName << errorMessage;
 
+    reportPendingFailed();
+
     mChannel.reset();
     setState(Null);
+}
+
+void ConversationChannel::reportPendingFailed()
+{
+    if (!mPendingMessages.isEmpty()) {
+        qDebug() << Q_FUNC_INFO << "Failed sending" << mPendingMessages.size() << "buffered messages to:" << mRemoteUid;
+        QList<QPair<Tp::MessagePartList, int> > failed = mPendingMessages;
+        mPendingMessages.clear();
+
+        QList<QPair<Tp::MessagePartList, int> >::const_iterator it = failed.constBegin(), end = failed.constEnd();
+        for ( ; it != end; ++it)
+            emit sendingFailed((*it).second, this);
+
+        reportPendingSetChanged();
+    }
+}
+
+void ConversationChannel::reportPendingSetChanged()
+{
+    ++mSequence;
+    emit sequenceChanged();
+}
+
+void ConversationChannel::timerEvent(QTimerEvent *timerEvent)
+{
+    if (timerEvent->timerId() == mTimer.timerId()) {
+        mTimer.stop();
+
+        // Remove any sent operations that have expired
+        foreach (int eventId, mSentEvents) {
+            QList<QPair<Tp::PendingOperation *, int> >::iterator it = mPendingSends.begin();
+            while (it != mPendingSends.end()) {
+                if ((*it).second == eventId) {
+                    it = mPendingSends.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+        }
+        mSentEvents.clear();
+    }
 }
 

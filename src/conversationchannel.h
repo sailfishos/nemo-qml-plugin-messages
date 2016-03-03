@@ -33,6 +33,7 @@
 #define CONVERSATIONCHANNEL_H
 
 #include <QObject>
+#include <QBasicTimer>
 #include <TelepathyQt/PendingChannelRequest>
 #include <TelepathyQt/ChannelRequest>
 #include <TelepathyQt/Channel>
@@ -48,6 +49,7 @@ class ConversationChannel : public QObject
     Q_PROPERTY(State state READ state NOTIFY stateChanged)
     Q_PROPERTY(QString localUid READ localUid CONSTANT)
     Q_PROPERTY(QString remoteUid READ remoteUid CONSTANT)
+    Q_PROPERTY(int sequence READ sequence NOTIFY sequenceChanged)
 
 public:
     enum State {
@@ -65,11 +67,16 @@ public:
     State state() const { return mState; }
     QString localUid() const { return mLocalUid; }
     QString remoteUid() const { return mRemoteUid; }
+    int sequence() const { return mSequence; }
 
     Q_INVOKABLE void ensureChannel();
+    Q_INVOKABLE bool eventIsPending(int eventId) const;
+
     void setChannel(const Tp::ChannelPtr &channel);
 
-    void sendMessage(const Tp::MessagePartList &parts);
+    void sendMessage(const Tp::MessagePartList &parts, int eventId, bool areadyPending);
+
+    void channelDestroyed();
 
 public slots:
     void sendMessage(const QString &text, int eventId = -1);
@@ -78,8 +85,9 @@ signals:
     void stateChanged(int newState);
     void requestSucceeded();
     void requestFailed(const QString &errorName, const QString &errorMessage);
-    void sendingFailed(int eventId);
-    void sendingSucceeded(int eventId);
+    void sendingFailed(int eventId, ConversationChannel *sender);
+    void sendingSucceeded(int eventId, ConversationChannel *sender);
+    void sequenceChanged();
 
 private slots:
     void accountReadyForChannel(Tp::PendingOperation *op);
@@ -104,12 +112,21 @@ private:
     QString mLocalUid;
     QString mRemoteUid;
 
-    Tp::MessagePartListList mPendingMessages;
+    QList<QPair<Tp::MessagePartList, int> > mPendingMessages;
+    QList<QPair<Tp::PendingOperation *, int> > mPendingSends;
+    QList<int> mSentEvents;
+    int mSequence;
+
+    QBasicTimer mTimer;
+
+    virtual void timerEvent(QTimerEvent *timerEvent);
 
     void setState(State newState);
     void start(Tp::PendingChannelRequest *request);
 
-    void sendingFailed(const Tp::MessagePartList &parts);
+    void reportPendingFailed();
+    void reportPendingSetChanged();
+
     int parseEventId(const Tp::MessagePartList &parts) const;
 };
 

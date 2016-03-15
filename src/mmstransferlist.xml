@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<!DOCTYPE node PUBLIC "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+"http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd">
+<node>
+    <interface name="org.nemomobile.MmsEngine.TransferList">
+        <method name="Get">
+            <arg name="list" type="ao" direction="out"/>
+        </method>
+        <signal name="TransferStarted">
+            <arg name="path" type="o"/>
+        </signal>
+        <signal name="TransferFinished">
+            <arg name="path" type="o"/>
+        </signal>
+    </interface>
+</node>

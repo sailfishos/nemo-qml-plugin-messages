@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2012 Jolla Ltd.
+ * Copyright (C) 2012-2016 Jolla Ltd.
  * Contact: John Brooks <john.brooks@jollamobile.com>
  *
  * You may use this file under the terms of the BSD license as follows:
@@ -45,6 +45,7 @@
 #include "channelmanager.h"
 #include "declarativeaccount.h"
 #include "smscharactercounter.h"
+#include "mmsmessageprogress.h"
 
 class Q_DECL_EXPORT NemoMessagesPlugin : public QQmlExtensionPlugin
 {
@@ -76,6 +77,7 @@ public:
         qmlRegisterUncreatableType<DeclarativeAccount>(uri, 1, 0, "TelepathyAccount",
                 QLatin1String("Create via AccountsModel"));
         qmlRegisterType<SmsCharacterCounter>(uri, 1, 0, "SmsCharacterCounter");
+        qmlRegisterType<MmsMessageProgress>(uri, 1, 0, "MmsMessageProgress");
     }
 };
 

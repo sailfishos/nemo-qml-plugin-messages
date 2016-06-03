@@ -153,7 +153,7 @@ void TpClientHandler::handleChannels(const MethodInvocationContextPtr<> &context
             continue;
         }
 
-        c->setChannel(channel);
+        c->addChannel(channel);
     }
 
     context->setFinished();

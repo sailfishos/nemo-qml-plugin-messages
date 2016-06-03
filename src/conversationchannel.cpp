@@ -50,7 +50,7 @@ ConversationChannel::~ConversationChannel()
 
 void ConversationChannel::ensureChannel()
 {
-    if (!mChannel.isNull() || mPendingRequest || !mRequest.isNull())
+    if (!mChannels.isEmpty() || mPendingRequest || !mRequest.isNull())
         return;
 
     if (!mAccount) {
@@ -115,27 +115,33 @@ void ConversationChannel::start(Tp::PendingChannelRequest *pendingRequest)
     setState(PendingRequest);
 }
 
-void ConversationChannel::setChannel(const Tp::ChannelPtr &c)
+void ConversationChannel::addChannel(const Tp::ChannelPtr &c)
 {
-    if (mChannel && c && mChannel->objectPath() == c->objectPath())
-        return;
-    if (!mChannel.isNull() || c.isNull()) {
-        qWarning() << Q_FUNC_INFO << "called with existing channel set";
+    if (c.isNull()) {
+        qWarning() << Q_FUNC_INFO << "called with null channel";
         return;
     }
+    for (QList<Tp::ChannelPtr>::const_iterator it = mChannels.cbegin(), end = mChannels.cend(); it != end; ++it) {
+        if ((*it)->objectPath() == c->objectPath()) {
+            // This channel is already being handled
+            return;
+        }
+    }
 
-    mChannel = c;
-    connect(mChannel->becomeReady(Tp::TextChannel::FeatureMessageQueue),
+    qDebug() << Q_FUNC_INFO << c->objectPath();
+
+    mChannels.append(c);
+    connect(c->becomeReady(Tp::TextChannel::FeatureMessageQueue),
             SIGNAL(finished(Tp::PendingOperation*)),
             SLOT(channelReady()));
-    connect(mChannel.data(), SIGNAL(messageReceived(Tp::ReceivedMessage)),
+    connect(c.data(), SIGNAL(messageReceived(Tp::ReceivedMessage)),
             SLOT(messageReceived(Tp::ReceivedMessage)));
-    connect(mChannel.data(), SIGNAL(invalidated(Tp::DBusProxy*,QString,QString)),
+    connect(c.data(), SIGNAL(invalidated(Tp::DBusProxy*,QString,QString)),
             SLOT(channelInvalidated(Tp::DBusProxy*,QString,QString)));
 
     setState(PendingReady);
 
-    /* setChannel may be called by the client handler before channelRequestSucceeded
+    /* addChannel may be called by the client handler before channelRequestSucceeded
      * returns. Either path is equivalent. */
     if (!mRequest.isNull()) {
         mRequest.reset();
@@ -177,7 +183,7 @@ void ConversationChannel::channelRequestSucceeded(const Tp::ChannelPtr &channel)
     }
 
     Q_ASSERT(!mRequest.isNull());
-    setChannel(channel);
+    addChannel(channel);
 }
 
 void ConversationChannel::channelRequestFailed(const QString &errorName,
@@ -194,11 +200,22 @@ void ConversationChannel::channelRequestFailed(const QString &errorName,
 
 void ConversationChannel::channelReady()
 {
-    if (state() != PendingReady || mChannel.isNull())
+    if (state() != PendingReady || mChannels.isEmpty())
         return;
 
-    Tp::TextChannelPtr textChannel = Tp::SharedPtr<Tp::TextChannel>::dynamicCast(mChannel);
+    Tp::ChannelPtr channel(qobject_cast<Tp::Channel *>(sender()));
+    QList<Tp::ChannelPtr>::iterator it = std::find(mChannels.begin(), mChannels.end(), channel);
+    if (it == mChannels.end()) {
+        qWarning() << "Unexpected ready notification received from unknown channel:" << channel->objectPath();
+        return;
+    }
+
+    Tp::TextChannelPtr textChannel = Tp::SharedPtr<Tp::TextChannel>::dynamicCast(channel);
     Q_ASSERT(!textChannel.isNull());
+    if (textChannel.isNull()) {
+        qWarning() << Q_FUNC_INFO << "Channel is not a text channel; cannot send messages";
+        return;
+    }
 
     setState(Ready);
 
@@ -239,11 +256,19 @@ void ConversationChannel::setState(State newState)
 
 void ConversationChannel::messageReceived(const Tp::ReceivedMessage &message)
 {
-    if (mChannel.isNull())
+    Tp::ChannelPtr channel(qobject_cast<Tp::Channel *>(sender()));
+    QList<Tp::ChannelPtr>::iterator it = std::find(mChannels.begin(), mChannels.end(), channel);
+    if (it == mChannels.end()) {
+        qWarning() << "Unexpected message:" << message.messageToken() << "received from unknown channel:" << channel->objectPath();
         return;
+    }
 
-    Tp::TextChannelPtr textChannel = Tp::SharedPtr<Tp::TextChannel>::dynamicCast(mChannel);
+    Tp::TextChannelPtr textChannel = Tp::SharedPtr<Tp::TextChannel>::dynamicCast(channel);
     Q_ASSERT(!textChannel.isNull());
+    if (textChannel.isNull()) {
+        qWarning() << Q_FUNC_INFO << "Channel is not a text channel; cannot receive messages";
+        return;
+    }
 
     textChannel->acknowledge(QList<Tp::ReceivedMessage>() << message);
 }
@@ -268,7 +293,8 @@ void ConversationChannel::sendMessage(const QString &text, int eventId)
 
 void ConversationChannel::sendMessage(const Tp::MessagePartList &parts, int eventId, bool alreadyPending)
 {
-    if (mChannel.isNull() || !mChannel->isReady()) {
+    Tp::ChannelPtr channel(mChannels.isEmpty() ? Tp::ChannelPtr() : mChannels.first());
+    if (channel.isNull() || !channel->isReady()) {
         Q_ASSERT(state() != Ready);
         qDebug() << Q_FUNC_INFO << "Buffering message until channel is ready for:" << mRemoteUid;
         mPendingMessages.append(qMakePair(parts, eventId));
@@ -279,7 +305,7 @@ void ConversationChannel::sendMessage(const Tp::MessagePartList &parts, int even
         return;
     }
 
-    Tp::TextChannelPtr textChannel = Tp::SharedPtr<Tp::TextChannel>::dynamicCast(mChannel);
+    Tp::TextChannelPtr textChannel = Tp::SharedPtr<Tp::TextChannel>::dynamicCast(channel);
     Q_ASSERT(!textChannel.isNull());
     if (textChannel.isNull()) {
         qWarning() << Q_FUNC_INFO << "Channel is not a text channel; cannot send messages";
@@ -358,11 +384,19 @@ void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,
         const QString &errorName, const QString &errorMessage)
 {
     Q_UNUSED(proxy);
-    qDebug() << "Channel invalidated:" << errorName << errorMessage;
 
+    Tp::ChannelPtr channel(qobject_cast<Tp::Channel *>(sender()));
+    QList<Tp::ChannelPtr>::iterator it = std::find(mChannels.begin(), mChannels.end(), channel);
+    if (it == mChannels.end()) {
+        qWarning() << "Unexpected invalidation of unknown channel:" << channel->objectPath();
+        return;
+    } else {
+        mChannels.erase(it);
+    }
+
+    qDebug() << "Channel invalidated:" << channel->objectPath() << errorName << errorMessage;
     reportPendingFailed();
 
-    mChannel.reset();
     setState(Null);
 }
 

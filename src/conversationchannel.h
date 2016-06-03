@@ -105,7 +105,7 @@ private slots:
 private:
     Tp::PendingChannelRequest *mPendingRequest;
     Tp::ChannelRequestPtr mRequest;
-    QList<Tp::ChannelPtr> mChannels;
+    QList<Tp::TextChannelPtr> mChannels;
     Tp::AccountPtr mAccount;
     State mState;
 

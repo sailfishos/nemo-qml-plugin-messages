@@ -72,7 +72,7 @@ public:
     Q_INVOKABLE void ensureChannel();
     Q_INVOKABLE bool eventIsPending(int eventId) const;
 
-    void setChannel(const Tp::ChannelPtr &channel);
+    void addChannel(const Tp::ChannelPtr &channel);
 
     void sendMessage(const Tp::MessagePartList &parts, int eventId, bool areadyPending);
 
@@ -105,7 +105,7 @@ private slots:
 private:
     Tp::PendingChannelRequest *mPendingRequest;
     Tp::ChannelRequestPtr mRequest;
-    Tp::ChannelPtr mChannel;
+    QList<Tp::TextChannelPtr> mChannels;
     Tp::AccountPtr mAccount;
     State mState;
 

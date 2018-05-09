@@ -39,6 +39,9 @@ mmstransferlist.source_flags = -N -c MmsMessageTransferListInterface
 
 INSTALLS += target
 
-qmldir.files += $$PWD/qmldir
+qmldir.files += qmldir plugins.qmltypes
 qmldir.path +=  $$target.path
 INSTALLS += qmldir
+
+qmltypes.commands = qmlplugindump -nonrelocatable org.nemomobile.messages.internal 1.0 > $$PWD/plugins.qmltypes
+QMAKE_EXTRA_TARGETS += qmltypes

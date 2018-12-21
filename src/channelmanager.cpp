@@ -110,6 +110,17 @@ ConversationChannel *ChannelManager::getConversation(const QString &localUid, co
     return channel;
 }
 
+bool ChannelManager::isPendingEvent(int eventId)
+{
+    foreach (ConversationChannel *channel, channels) {
+        if (channel->eventIsPending(eventId)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 void ChannelManager::channelDestroyed(QObject *obj)
 {
     if (ConversationChannel *channel = static_cast<ConversationChannel*>(obj)) {

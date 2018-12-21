@@ -310,6 +310,9 @@ void ConversationChannel::sendMessage(const Tp::MessagePartList &parts, int even
         // If alreadyPending is false, this message was not previously buffered, so
         // we have now added it to the pending set
         reportPendingSetChanged();
+
+        if (!textChannel->messageQueue().isEmpty())
+            textChannel->acknowledge(textChannel->messageQueue());
     }
 }
 

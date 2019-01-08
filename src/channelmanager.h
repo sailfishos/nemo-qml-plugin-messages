@@ -57,6 +57,7 @@ public:
     void setHandlerName(const QString &handlerName);
 
     Q_INVOKABLE ConversationChannel *getConversation(const QString &localUid, const QString &remoteUid);
+    Q_INVOKABLE bool isPendingEvent(int eventId);
 
 signals:
     void handlerNameChanged();

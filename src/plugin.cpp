@@ -46,6 +46,7 @@
 #include "declarativeaccount.h"
 #include "smscharactercounter.h"
 #include "mmsmessageprogress.h"
+#include "smssender.h"
 
 class Q_DECL_EXPORT NemoMessagesPlugin : public QQmlExtensionPlugin
 {
@@ -78,6 +79,7 @@ public:
                 QLatin1String("Create via AccountsModel"));
         qmlRegisterType<SmsCharacterCounter>(uri, 1, 0, "SmsCharacterCounter");
         qmlRegisterType<MmsMessageProgress>(uri, 1, 0, "MmsMessageProgress");
+        qmlRegisterType<SmsSender>(uri, 1, 0, "SmsSender");
     }
 };
 

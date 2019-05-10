@@ -20,14 +20,16 @@ SOURCES += plugin.cpp \
     channelmanager.cpp \
     smscharactercounter.cpp \
     mmsmessageprogress.cpp \
-    declarativeaccount.cpp
+    declarativeaccount.cpp \
+    smssender.cpp
 
 HEADERS += accountsmodel.h \
     conversationchannel.h \
     channelmanager.h \
     smscharactercounter.h \
     mmsmessageprogress.h \
-    declarativeaccount.h
+    declarativeaccount.h \
+    smssender.h
 
 OTHER_FILES += mmstransfer.xml \
   mmstransferlist.xml

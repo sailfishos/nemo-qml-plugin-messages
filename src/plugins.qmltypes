@@ -450,4 +450,25 @@ Module {
         Property { name: "messageCount"; type: "int"; isReadonly: true }
         Property { name: "remainingCharacterCount"; type: "int"; isReadonly: true }
     }
+    Component {
+        name: "SmsSender"
+        prototype: "QObject"
+        exports: ["org.nemomobile.messages.internal/SmsSender 1.0"]
+        exportMetaObjectRevisions: [0]
+        Signal {
+            name: "sendingSucceeded"
+            Parameter { name: "eventId"; type: "int" }
+        }
+        Signal {
+            name: "sendingFailed"
+            Parameter { name: "eventId"; type: "int" }
+        }
+        Method {
+            name: "sendSMS"
+            type: "int"
+            Parameter { name: "modem"; type: "string" }
+            Parameter { name: "phoneNumber"; type: "string" }
+            Parameter { name: "text"; type: "string" }
+        }
+    }
 }

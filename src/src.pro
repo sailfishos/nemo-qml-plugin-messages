@@ -6,6 +6,10 @@ CONFIG += qt plugin hide_symbols
 CONFIG += link_pkgconfig
 PKGCONFIG += TelepathyQt5 commhistory-qt5 qtcontacts-sqlite-qt5-extensions
 
+NEMO {
+    DEFINES += FOR_NEMO
+}
+
 QT = \
     core \
     contacts \

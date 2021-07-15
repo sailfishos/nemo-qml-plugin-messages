@@ -97,7 +97,11 @@ void ConversationChannel::accountReadyForChannel(Tp::PendingOperation *op)
 
     Tp::PendingChannelRequest *req = mAccount->ensureTextChat(mRemoteUid,
             QDateTime::currentDateTime(),
+#ifdef FOR_NEMO
+            QLatin1String("org.freedesktop.Telepathy.Client.qmlmessages"));
+#else
             QLatin1String("org.freedesktop.Telepathy.Client.org.sailfishos.Messages"));
+#endif
     start(req);
 }
 

@@ -3,9 +3,8 @@ Name:       nemo-qml-plugin-messages-internal-qt5
 Summary:    QML plugin for internal messages functionality
 Version:    0.1.23
 Release:    1
-Group:      System/Libraries
 License:    BSD
-URL:        https://git.merproject.org/mer-core/nemo-qml-plugin-messages
+URL:        https://github.com/sailfishos/nemo-qml-plugin-messages
 Source0:    %{name}-%{version}.tar.bz2
 BuildRequires:  pkgconfig(Qt5Core)
 BuildRequires:  pkgconfig(Qt5Qml)
@@ -20,7 +19,6 @@ QML plugin for internal messages functionality in Nemo
 
 %package tests
 Summary:    QML plugin for internal messages functionality tests
-Group:      System/Libraries
 Requires:   %{name} = %{version}-%{release}
 
 %description tests
@@ -33,14 +31,14 @@ Requires:   %{name} = %{version}-%{release}
 
 %qmake5 
 
-make %{?jobs:-j%jobs}
+%make_build
 
 %install
-rm -rf %{buildroot}
 %qmake_install
 
 %files
 %defattr(-,root,root,-)
+%license LICENSE.BSD
 %{_libdir}/qt5/qml/org/nemomobile/messages/internal/*
 
 %files tests

@@ -73,10 +73,10 @@ public:
 
         qmlRegisterType<AccountsModel>(uri, 1, 0, "TelepathyAccountsModel");
         qmlRegisterUncreatableType<ConversationChannel>(uri, 1, 0, "ConversationChannel",
-                QLatin1String("Must be created via TelepathyChannelManager"));
+                                                        QLatin1String("Must be created via TelepathyChannelManager"));
         qmlRegisterType<ChannelManager>(uri, 1, 0, "TelepathyChannelManager");
         qmlRegisterUncreatableType<DeclarativeAccount>(uri, 1, 0, "TelepathyAccount",
-                QLatin1String("Create via AccountsModel"));
+                                                       QLatin1String("Create via AccountsModel"));
         qmlRegisterType<SmsCharacterCounter>(uri, 1, 0, "SmsCharacterCounter");
         qmlRegisterType<MmsMessageProgress>(uri, 1, 0, "MmsMessageProgress");
         qmlRegisterType<SmsSender>(uri, 1, 0, "SmsSender");

@@ -40,7 +40,12 @@
 #include <TelepathyQt/Account>
 
 ConversationChannel::ConversationChannel(const QString &localUid, const QString &remoteUid, QObject *parent)
-    : QObject(parent), mPendingRequest(0), mState(Null), mLocalUid(localUid), mRemoteUid(remoteUid), mSequence(0)
+    : QObject(parent)
+    , mPendingRequest(nullptr)
+    , mState(Null)
+    , mLocalUid(localUid)
+    , mRemoteUid(remoteUid)
+    , mSequence(0)
 {
 }
 
@@ -63,7 +68,7 @@ void ConversationChannel::ensureChannel()
     }
 
     if (mAccount->isReady()) {
-        accountReadyForChannel(0);
+        accountReadyForChannel(nullptr);
     } else {
         connect(mAccount->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
                 SLOT(accountReadyForChannel(Tp::PendingOperation*)));
@@ -151,8 +156,8 @@ void ConversationChannel::addChannel(const Tp::ChannelPtr &c)
 
     setState(PendingReady);
 
-    /* addChannel may be called by the client handler before channelRequestSucceeded
-     * returns. Either path is equivalent. */
+    // addChannel may be called by the client handler before channelRequestSucceeded returns.
+    // Either path is equivalent.
     if (!mRequest.isNull()) {
         mRequest.reset();
         emit requestSucceeded();
@@ -175,7 +180,7 @@ void ConversationChannel::channelRequestCreated(const Tp::ChannelRequestPtr &r)
     connect(mRequest.data(), SIGNAL(failed(QString,QString)),
             SLOT(channelRequestFailed(QString,QString)));
 
-    mPendingRequest = 0;
+    mPendingRequest = nullptr;
     setState(Requested);
 }
 
@@ -196,8 +201,7 @@ void ConversationChannel::channelRequestSucceeded(const Tp::ChannelPtr &channel)
     addChannel(channel);
 }
 
-void ConversationChannel::channelRequestFailed(const QString &errorName,
-        const QString &errorMessage)
+void ConversationChannel::channelRequestFailed(const QString &errorName, const QString &errorMessage)
 {
     Q_ASSERT(state() == Requested);
 
@@ -263,7 +267,8 @@ void ConversationChannel::messageReceived(const Tp::ReceivedMessage &message)
     Tp::TextChannelPtr textChannel(qobject_cast<Tp::TextChannel *>(sender()));
     QList<Tp::TextChannelPtr>::const_iterator it = std::find(mChannels.cbegin(), mChannels.cend(), textChannel);
     if (it == mChannels.end()) {
-        qWarning() << "Unexpected message:" << message.messageToken() << "received from unknown channel:" << textChannel->objectPath();
+        qWarning() << "Unexpected message:" << message.messageToken()
+                   << "received from unknown channel:" << textChannel->objectPath();
         return;
     }
 
@@ -371,7 +376,7 @@ int ConversationChannel::parseEventId(const Tp::MessagePartList &parts) const
 }
 
 void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,
-        const QString &errorName, const QString &errorMessage)
+                                             const QString &errorName, const QString &errorMessage)
 {
     Q_UNUSED(proxy);
 
@@ -393,7 +398,8 @@ void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,
 void ConversationChannel::reportPendingFailed()
 {
     if (!mPendingMessages.isEmpty()) {
-        qDebug() << Q_FUNC_INFO << "Failed sending" << mPendingMessages.size() << "buffered messages to:" << mRemoteUid;
+        qDebug() << Q_FUNC_INFO << "Failed sending" << mPendingMessages.size()
+                 << "buffered messages to:" << mRemoteUid;
         QList<QPair<Tp::MessagePartList, int> > failed = mPendingMessages;
         mPendingMessages.clear();
 
@@ -430,4 +436,3 @@ void ConversationChannel::timerEvent(QTimerEvent *timerEvent)
         mSentEvents.clear();
     }
 }
-

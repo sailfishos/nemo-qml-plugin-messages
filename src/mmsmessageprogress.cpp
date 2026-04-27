@@ -99,10 +99,10 @@ QSharedPointer<MmsMessageTransferList> MmsMessageTransferList::instance()
     return ptr;
 }
 
-MmsMessageTransferList::MmsMessageTransferList() :
-    MmsMessageTransferListInterface(kMmsService, "/", kMmsServiceBus),
-    iValid(false),
-    iPendingCall(NULL)
+MmsMessageTransferList::MmsMessageTransferList()
+    : MmsMessageTransferListInterface(kMmsService, "/", kMmsServiceBus)
+    , iValid(false)
+    , iPendingCall(nullptr)
 {
     QDBusConnection dbus = connection();
     QDBusServiceWatcher* serviceWatcher = new QDBusServiceWatcher(kMmsService,
@@ -133,10 +133,9 @@ void MmsMessageTransferList::requestTransferList()
 
 void MmsMessageTransferList::onServiceUnregistered()
 {
-    if (iPendingCall) {
-        delete iPendingCall;
-        iPendingCall = NULL;
-    }
+    delete iPendingCall;
+    iPendingCall = nullptr;
+
     if (iValid) {
         iValid = false;
         Q_EMIT validChanged();
@@ -146,7 +145,8 @@ void MmsMessageTransferList::onServiceUnregistered()
 void MmsMessageTransferList::onTransferListFinished(QDBusPendingCallWatcher* aWatcher)
 {
     QDBusPendingReply<QList<QDBusObjectPath> > reply(*aWatcher);
-    iPendingCall = NULL;
+    iPendingCall = nullptr;
+
     if (reply.isError()) {
         // Repeat the call on timeout
         qWarning() << reply.error();
@@ -192,18 +192,21 @@ void MmsMessageTransferList::onTransferFinished(QDBusObjectPath aPath)
 // while after a transfer completes.
 // ==========================================================================
 
-class MmsMessageTransferList::RefHolder : public QTimer {
+class MmsMessageTransferList::RefHolder : public QTimer
+{
     Q_OBJECT
+
 public:
     enum { HOLD_REF_MSEC = 10000 };
     RefHolder(QSharedPointer<MmsMessageTransferList> aPointer);
     QSharedPointer<MmsMessageTransferList> iPointer;
+
 private Q_SLOTS:
     void onTimeout();
 };
 
-MmsMessageTransferList::RefHolder::RefHolder(QSharedPointer<MmsMessageTransferList> aPointer) :
-    iPointer(aPointer)
+MmsMessageTransferList::RefHolder::RefHolder(QSharedPointer<MmsMessageTransferList> aPointer)
+    : iPointer(aPointer)
 {
     setSingleShot(true);
     connect(this, &QTimer::timeout, this, &RefHolder::onTimeout);
@@ -268,31 +271,31 @@ private:
     QSharedPointer<MmsMessageTransferList> iTransferList;
 };
 
-MmsMessageProgress::Private::Private(QString aPath, bool aInbound, MmsMessageProgress* aParent) :
-    MmsMessageTransferInterface(kMmsService, aPath, kMmsServiceBus, aParent),
-    iValid(false),
-    iRunning(false),
-    iInbound(aInbound),
-    iProgress(0.0),
-    iCookie(0),
-    iBytesSent(0),
-    iBytesToSend(0),
-    iBytesReceived(0),
-    iBytesToReceive(0),
-    iParent(aParent),
-    iPendingGetAll(NULL),
-    iTransferList(MmsMessageTransferList::instance())
+MmsMessageProgress::Private::Private(QString aPath, bool aInbound, MmsMessageProgress* aParent)
+    : MmsMessageTransferInterface(kMmsService, aPath, kMmsServiceBus, aParent)
+    , iValid(false)
+    , iRunning(false)
+    , iInbound(aInbound)
+    , iProgress(0.0)
+    , iCookie(0)
+    , iBytesSent(0)
+    , iBytesToSend(0)
+    , iBytesReceived(0)
+    , iBytesToReceive(0)
+    , iParent(aParent)
+    , iPendingGetAll(nullptr)
+    , iTransferList(MmsMessageTransferList::instance())
 {
     connect(this, &MmsMessageTransferInterface::SendProgressChanged,
-        this, &Private::onSendProgressChanged);
+            this, &Private::onSendProgressChanged);
     connect(this, &MmsMessageTransferInterface::ReceiveProgressChanged,
-        this, &Private::onReceiveProgressChanged);
+            this, &Private::onReceiveProgressChanged);
     connect(iTransferList.data(), &MmsMessageTransferList::validChanged,
-        this, &Private::onTransferListChanged);
+            this, &Private::onTransferListChanged);
     connect(iTransferList.data(), &MmsMessageTransferList::transferStarted,
-        this, &Private::onTransferListChanged);
+            this, &Private::onTransferListChanged);
     connect(iTransferList.data(), &MmsMessageTransferList::transferFinished,
-        this, &Private::onTransferListChanged);
+            this, &Private::onTransferListChanged);
     onTransferListChanged();
 }
 
@@ -318,7 +321,7 @@ void MmsMessageProgress::Private::getAll()
     delete iPendingGetAll;
     iPendingGetAll = new QDBusPendingCallWatcher(GetAll(), this);
     connect(iPendingGetAll, &QDBusPendingCallWatcher::finished,
-        this, &Private::onGetAllFinished);
+            this, &Private::onGetAllFinished);
 }
 
 void MmsMessageProgress::Private::enableUpdates()
@@ -345,7 +348,7 @@ void MmsMessageProgress::Private::onTransferListChanged()
         iCookie = 0;
         if (iPendingGetAll) {
             delete iPendingGetAll;
-            iPendingGetAll = NULL;
+            iPendingGetAll = nullptr;
         }
         if (iValid) {
             iValid = false;
@@ -363,7 +366,8 @@ void MmsMessageProgress::Private::onGetAllFinished(QDBusPendingCallWatcher* aWat
     // 3. bytes_received
     // 4. bytes_to_receive
     QDBusPendingReply<uint,uint,uint,uint,uint> reply(*aWatcher);
-    iPendingGetAll = NULL;
+    iPendingGetAll = nullptr;
+
     if (reply.isError()) {
         // Repeat the call on timeout
         qWarning() << reply.error();
@@ -456,20 +460,22 @@ void MmsMessageProgress::Private::updateRunning()
 // MMS message in the commhistory database.
 // ==========================================================================
 
-MmsMessageProgress::MmsMessageProgress(QObject* aParent) :
-    QObject(aParent),
-    iPrivate(NULL)
+MmsMessageProgress::MmsMessageProgress(QObject* aParent)
+    : QObject(aParent)
+    , iPrivate(nullptr)
 {
 }
 
 void MmsMessageProgress::setPath(QString aPath)
 {
     QString prevPath = path();
+
     if (prevPath != aPath) {
         bool wasValid = valid();
         bool wasRunning = running();
         delete iPrivate;
-        iPrivate = aPath.isEmpty() ? NULL : new Private(aPath, iInbound, this);
+        iPrivate = aPath.isEmpty() ? nullptr
+                                   : new Private(aPath, iInbound, this);
         Q_EMIT pathChanged();
         if (valid() != wasValid) {
             Q_EMIT validChanged();

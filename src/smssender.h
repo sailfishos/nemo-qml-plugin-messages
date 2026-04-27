@@ -65,7 +65,6 @@ private:
 
     CommHistory::GroupManager *m_groupManager;
     ChannelManager *m_channelManager;
-
 };
 
 #endif // SMSSENDER_H

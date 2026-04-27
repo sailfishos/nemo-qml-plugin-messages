@@ -43,7 +43,7 @@ using namespace CommHistory;
 const QString ringBaseName = QStringLiteral("/org/freedesktop/Telepathy/Account/ring/tel");
 
 SmsSender::SmsSender(QObject *parent)
-    : QObject (parent)
+    : QObject(parent)
     , m_groupManager(new CommHistory::GroupManager(this))
     , m_channelManager(new ChannelManager(this))
 {
@@ -56,8 +56,10 @@ int SmsSender::sendSMS(const QString &modem, const QString &phoneNumber, const Q
     QStringList remoteUids(phoneNumber);
     ConversationChannel *channel = m_channelManager->getConversation(localUid, phoneNumber);
 
-    QObject::connect(channel, &ConversationChannel::sendingSucceeded, this, &SmsSender::channelSendingSucceeded, Qt::UniqueConnection);
-    QObject::connect(channel, &ConversationChannel::sendingFailed, this, &SmsSender::channelSendingFailed, Qt::UniqueConnection);
+    QObject::connect(channel, &ConversationChannel::sendingSucceeded,
+                     this, &SmsSender::channelSendingSucceeded, Qt::UniqueConnection);
+    QObject::connect(channel, &ConversationChannel::sendingFailed,
+                     this, &SmsSender::channelSendingFailed, Qt::UniqueConnection);
 
     int groupId = ensureGroupExists(localUid, remoteUids);
 

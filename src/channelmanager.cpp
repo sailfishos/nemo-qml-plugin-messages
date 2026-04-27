@@ -85,6 +85,7 @@ void ChannelManager::setHandlerName(const QString &name)
     const QDBusConnection &dbus = QDBusConnection::sessionBus();
     if (registrar.isNull())
         registrar = ClientRegistrar::create(dbus);
+
     handler = AbstractClientPtr(new TpClientHandler(this));
     registrar->registerClient(handler, m_handlerName);
 
@@ -169,4 +170,3 @@ void TpClientHandler::handleChannels(const MethodInvocationContextPtr<> &context
 
     context->setFinished();
 }
-

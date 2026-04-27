@@ -62,29 +62,29 @@ DeclarativeAccount::ConnectionStatus DeclarativeAccount::connectionStatus() cons
 DeclarativeAccount::ConnectionStatusReason DeclarativeAccount::connectionStatusReason() const
 {
     switch (account->connectionStatusReason()) {
-        case Tp::ConnectionStatusReasonNoneSpecified:
-            return ReasonNoneSpecified;
-        case Tp::ConnectionStatusReasonRequested:
-            return ReasonRequested;
-        case Tp::ConnectionStatusReasonNetworkError:
-            return ReasonNetworkError;
-        case Tp::ConnectionStatusReasonAuthenticationFailed:
-            return ReasonAuthenticationFailed;
-        case Tp::ConnectionStatusReasonEncryptionError:
-        case Tp::ConnectionStatusReasonCertNotProvided:
-        case Tp::ConnectionStatusReasonCertUntrusted:
-        case Tp::ConnectionStatusReasonCertExpired:
-        case Tp::ConnectionStatusReasonCertNotActivated:
-        case Tp::ConnectionStatusReasonCertHostnameMismatch:
-        case Tp::ConnectionStatusReasonCertFingerprintMismatch:
-        case Tp::ConnectionStatusReasonCertSelfSigned:
-        case Tp::ConnectionStatusReasonCertOtherError:
-        case Tp::ConnectionStatusReasonCertRevoked:
-        case Tp::ConnectionStatusReasonCertInsecure:
-        case Tp::ConnectionStatusReasonCertLimitExceeded:
-            return ReasonEncryptionError;
-        default:
-            return ReasonNoneSpecified;
+    case Tp::ConnectionStatusReasonNoneSpecified:
+        return ReasonNoneSpecified;
+    case Tp::ConnectionStatusReasonRequested:
+        return ReasonRequested;
+    case Tp::ConnectionStatusReasonNetworkError:
+        return ReasonNetworkError;
+    case Tp::ConnectionStatusReasonAuthenticationFailed:
+        return ReasonAuthenticationFailed;
+    case Tp::ConnectionStatusReasonEncryptionError:
+    case Tp::ConnectionStatusReasonCertNotProvided:
+    case Tp::ConnectionStatusReasonCertUntrusted:
+    case Tp::ConnectionStatusReasonCertExpired:
+    case Tp::ConnectionStatusReasonCertNotActivated:
+    case Tp::ConnectionStatusReasonCertHostnameMismatch:
+    case Tp::ConnectionStatusReasonCertFingerprintMismatch:
+    case Tp::ConnectionStatusReasonCertSelfSigned:
+    case Tp::ConnectionStatusReasonCertOtherError:
+    case Tp::ConnectionStatusReasonCertRevoked:
+    case Tp::ConnectionStatusReasonCertInsecure:
+    case Tp::ConnectionStatusReasonCertLimitExceeded:
+        return ReasonEncryptionError;
+    default:
+        return ReasonNoneSpecified;
     }
 }
 
@@ -92,4 +92,3 @@ QString DeclarativeAccount::connectionError() const
 {
     return account->connectionError();
 }
-

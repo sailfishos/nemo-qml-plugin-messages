@@ -122,7 +122,6 @@ private:
     virtual void timerEvent(QTimerEvent *timerEvent);
 
     void setState(State newState);
-    void start(Tp::PendingChannelRequest *request);
 
     void reportPendingFailed();
     void reportPendingSetChanged();

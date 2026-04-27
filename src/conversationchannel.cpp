@@ -100,20 +100,20 @@ void ConversationChannel::accountReadyForChannel(Tp::PendingOperation *op)
         return;
     }
 
-    Tp::PendingChannelRequest *req = mAccount->ensureTextChat(mRemoteUid,
+    if (mPendingRequest) {
+        qDebug() << Q_FUNC_INFO << "Pending request already exists. Shouldn't happen.";
+        return;
+    }
+
+    if (state() != Null && state() != Error) {
+        qDebug() << Q_FUNC_INFO << "return due to unexpected state" << state();
+        return;
+    }
+
+    mPendingRequest = mAccount->ensureTextChat(mRemoteUid,
             QDateTime::currentDateTime(),
             QLatin1String("org.freedesktop.Telepathy.Client.org.sailfishos.Messages"));
-    start(req);
-}
 
-void ConversationChannel::start(Tp::PendingChannelRequest *pendingRequest)
-{
-    Q_ASSERT(state() == Null || state() == Error);
-    Q_ASSERT(!mPendingRequest);
-    if (state() != Null && state() != Error)
-        return;
-
-    mPendingRequest = pendingRequest;
     connect(mPendingRequest, &Tp::PendingChannelRequest::channelRequestCreated,
             this, &ConversationChannel::channelRequestCreated);
 

@@ -70,8 +70,8 @@ void ConversationChannel::ensureChannel()
     if (mAccount->isReady()) {
         accountReadyForChannel(nullptr);
     } else {
-        connect(mAccount->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
-                SLOT(accountReadyForChannel(Tp::PendingOperation*)));
+        connect(mAccount->becomeReady(), &Tp::PendingReady::finished,
+                this, &ConversationChannel::accountReadyForChannel);
     }
 }
 
@@ -114,8 +114,8 @@ void ConversationChannel::start(Tp::PendingChannelRequest *pendingRequest)
         return;
 
     mPendingRequest = pendingRequest;
-    connect(mPendingRequest, SIGNAL(channelRequestCreated(Tp::ChannelRequestPtr)),
-            SLOT(channelRequestCreated(Tp::ChannelRequestPtr)));
+    connect(mPendingRequest, &Tp::PendingChannelRequest::channelRequestCreated,
+            this, &ConversationChannel::channelRequestCreated);
 
     setState(PendingRequest);
 }
@@ -147,12 +147,12 @@ void ConversationChannel::addChannel(const Tp::ChannelPtr &c)
     Tp::PendingReady *pendingReady(textChannel->becomeReady(Tp::TextChannel::FeatureMessageQueue));
     pendingReady->setProperty("textChannel", QVariant::fromValue<QObject*>(textChannel.data()));
 
-    connect(pendingReady, SIGNAL(finished(Tp::PendingOperation*)),
-            SLOT(channelReady()));
-    connect(textChannel.data(), SIGNAL(messageReceived(Tp::ReceivedMessage)),
-            SLOT(messageReceived(Tp::ReceivedMessage)));
-    connect(textChannel.data(), SIGNAL(invalidated(Tp::DBusProxy*,QString,QString)),
-            SLOT(channelInvalidated(Tp::DBusProxy*,QString,QString)));
+    connect(pendingReady, &Tp::PendingReady::finished,
+            this, &ConversationChannel::channelReady);
+    connect(textChannel.data(), &Tp::TextChannel::messageReceived,
+            this, &ConversationChannel::messageReceived);
+    connect(textChannel.data(), &Tp::TextChannel::invalidated,
+            this, &ConversationChannel::channelInvalidated);
 
     setState(PendingReady);
 
@@ -164,21 +164,21 @@ void ConversationChannel::addChannel(const Tp::ChannelPtr &c)
     }
 }
 
-void ConversationChannel::channelRequestCreated(const Tp::ChannelRequestPtr &r)
+void ConversationChannel::channelRequestCreated(const Tp::ChannelRequestPtr &req)
 {
     Q_ASSERT(state() == PendingRequest);
     Q_ASSERT(mRequest.isNull());
-    Q_ASSERT(!r.isNull());
+    Q_ASSERT(!req.isNull());
     if (state() != PendingRequest)
         return;
 
     qDebug() << Q_FUNC_INFO;
 
-    mRequest = r;
-    connect(mRequest.data(), SIGNAL(succeeded(Tp::ChannelPtr)),
-            SLOT(channelRequestSucceeded(Tp::ChannelPtr)));
-    connect(mRequest.data(), SIGNAL(failed(QString,QString)),
-            SLOT(channelRequestFailed(QString,QString)));
+    mRequest = req;
+    connect(mRequest.data(), &Tp::ChannelRequest::succeeded,
+            this, &ConversationChannel::channelRequestSucceeded);
+    connect(mRequest.data(), &Tp::ChannelRequest::failed,
+            this, &ConversationChannel::channelRequestFailed);
 
     mPendingRequest = nullptr;
     setState(Requested);
@@ -212,8 +212,10 @@ void ConversationChannel::channelRequestFailed(const QString &errorName, const Q
     qDebug() << Q_FUNC_INFO << errorName << errorMessage;
 }
 
-void ConversationChannel::channelReady()
+void ConversationChannel::channelReady(Tp::PendingOperation *op)
 {
+    Q_UNUSED(op)
+
     if (state() != PendingReady)
         return;
 
@@ -309,7 +311,8 @@ void ConversationChannel::sendMessage(const Tp::MessagePartList &parts, int even
 
     Tp::PendingSendMessage *msg = textChannel->send(parts);
     mPendingSends.append(qMakePair(msg, eventId));
-    connect(msg, SIGNAL(finished(Tp::PendingOperation*)), SLOT(sendingFinished(Tp::PendingOperation*)));
+    connect(msg, &Tp::PendingSendMessage::finished,
+            this, &ConversationChannel::sendingFinished);
 
     if (!alreadyPending) {
         // If alreadyPending is false, this message was not previously buffered, so

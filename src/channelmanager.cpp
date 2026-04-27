@@ -105,7 +105,8 @@ ConversationChannel *ChannelManager::getConversation(const QString &localUid, co
     }
 
     ConversationChannel *channel = new ConversationChannel(localUid, remoteUid, this);
-    connect(channel, SIGNAL(destroyed(QObject*)), SLOT(channelDestroyed(QObject*)));
+    connect(channel, &ConversationChannel::destroyed,
+            this, &ChannelManager::channelDestroyed);
     channels.append(channel);
 
     return channel;

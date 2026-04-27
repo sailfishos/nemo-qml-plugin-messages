@@ -94,7 +94,7 @@ private slots:
     void channelRequestCreated(const Tp::ChannelRequestPtr &request);
     void channelRequestSucceeded(const Tp::ChannelPtr &channel);
     void channelRequestFailed(const QString &errorName, const QString &errorMessage);
-    void channelReady();
+    void channelReady(Tp::PendingOperation *op);
 
     void messageReceived(const Tp::ReceivedMessage &message);
 

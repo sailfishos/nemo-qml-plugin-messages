@@ -45,11 +45,12 @@ AccountsModel::AccountsModel(QObject *parent)
     , mReady(false)
 {
     mAccountManager = Tp::AccountManager::create(Tp::AccountFactory::create(QDBusConnection::sessionBus(),
-                Tp::Account::FeatureCore));
-    connect(mAccountManager->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
-            SLOT(accountManagerReady(Tp::PendingOperation*)));
-    connect(mAccountManager.data(), SIGNAL(newAccount(Tp::AccountPtr)),
-            SLOT(newAccount(Tp::AccountPtr)));
+                                                                            Tp::Account::FeatureCore));
+
+    connect(mAccountManager->becomeReady(), &Tp::PendingReady::finished,
+            this, &AccountsModel::accountManagerReady);
+    connect(mAccountManager.data(), &Tp::AccountManager::newAccount,
+            this, &AccountsModel::newAccount);
 }
 
 QHash<int,QByteArray> AccountsModel::roleNames() const

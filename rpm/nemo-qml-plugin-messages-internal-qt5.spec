@@ -37,10 +37,8 @@ Requires:   %{name} = %{version}-%{release}
 %qmake_install
 
 %files
-%defattr(-,root,root,-)
 %license LICENSE.BSD
 %{_libdir}/qt5/qml/org/nemomobile/messages/internal/*
 
 %files tests
-%defattr(-,root,root,-)
 /opt/tests/nemo-qml-plugin-messages/*

@@ -40,7 +40,12 @@
 #include <TelepathyQt/Account>
 
 ConversationChannel::ConversationChannel(const QString &localUid, const QString &remoteUid, QObject *parent)
-    : QObject(parent), mPendingRequest(0), mState(Null), mLocalUid(localUid), mRemoteUid(remoteUid), mSequence(0)
+    : QObject(parent)
+    , mPendingRequest(nullptr)
+    , mState(Null)
+    , mLocalUid(localUid)
+    , mRemoteUid(remoteUid)
+    , mSequence(0)
 {
 }
 
@@ -63,10 +68,10 @@ void ConversationChannel::ensureChannel()
     }
 
     if (mAccount->isReady()) {
-        accountReadyForChannel(0);
+        accountReadyForChannel(nullptr);
     } else {
-        connect(mAccount->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)),
-                SLOT(accountReadyForChannel(Tp::PendingOperation*)));
+        connect(mAccount->becomeReady(), &Tp::PendingReady::finished,
+                this, &ConversationChannel::accountReadyForChannel);
     }
 }
 
@@ -95,22 +100,22 @@ void ConversationChannel::accountReadyForChannel(Tp::PendingOperation *op)
         return;
     }
 
-    Tp::PendingChannelRequest *req = mAccount->ensureTextChat(mRemoteUid,
+    if (mPendingRequest) {
+        qDebug() << Q_FUNC_INFO << "Pending request already exists. Shouldn't happen.";
+        return;
+    }
+
+    if (state() != Null && state() != Error) {
+        qDebug() << Q_FUNC_INFO << "return due to unexpected state" << state();
+        return;
+    }
+
+    mPendingRequest = mAccount->ensureTextChat(mRemoteUid,
             QDateTime::currentDateTime(),
             QLatin1String("org.freedesktop.Telepathy.Client.org.sailfishos.Messages"));
-    start(req);
-}
 
-void ConversationChannel::start(Tp::PendingChannelRequest *pendingRequest)
-{
-    Q_ASSERT(state() == Null || state() == Error);
-    Q_ASSERT(!mPendingRequest);
-    if (state() != Null && state() != Error)
-        return;
-
-    mPendingRequest = pendingRequest;
-    connect(mPendingRequest, SIGNAL(channelRequestCreated(Tp::ChannelRequestPtr)),
-            SLOT(channelRequestCreated(Tp::ChannelRequestPtr)));
+    connect(mPendingRequest, &Tp::PendingChannelRequest::channelRequestCreated,
+            this, &ConversationChannel::channelRequestCreated);
 
     setState(PendingRequest);
 }
@@ -142,40 +147,40 @@ void ConversationChannel::addChannel(const Tp::ChannelPtr &c)
     Tp::PendingReady *pendingReady(textChannel->becomeReady(Tp::TextChannel::FeatureMessageQueue));
     pendingReady->setProperty("textChannel", QVariant::fromValue<QObject*>(textChannel.data()));
 
-    connect(pendingReady, SIGNAL(finished(Tp::PendingOperation*)),
-            SLOT(channelReady()));
-    connect(textChannel.data(), SIGNAL(messageReceived(Tp::ReceivedMessage)),
-            SLOT(messageReceived(Tp::ReceivedMessage)));
-    connect(textChannel.data(), SIGNAL(invalidated(Tp::DBusProxy*,QString,QString)),
-            SLOT(channelInvalidated(Tp::DBusProxy*,QString,QString)));
+    connect(pendingReady, &Tp::PendingReady::finished,
+            this, &ConversationChannel::channelReady);
+    connect(textChannel.data(), &Tp::TextChannel::messageReceived,
+            this, &ConversationChannel::messageReceived);
+    connect(textChannel.data(), &Tp::TextChannel::invalidated,
+            this, &ConversationChannel::channelInvalidated);
 
     setState(PendingReady);
 
-    /* addChannel may be called by the client handler before channelRequestSucceeded
-     * returns. Either path is equivalent. */
+    // addChannel may be called by the client handler before channelRequestSucceeded returns.
+    // Either path is equivalent.
     if (!mRequest.isNull()) {
         mRequest.reset();
         emit requestSucceeded();
     }
 }
 
-void ConversationChannel::channelRequestCreated(const Tp::ChannelRequestPtr &r)
+void ConversationChannel::channelRequestCreated(const Tp::ChannelRequestPtr &req)
 {
     Q_ASSERT(state() == PendingRequest);
     Q_ASSERT(mRequest.isNull());
-    Q_ASSERT(!r.isNull());
+    Q_ASSERT(!req.isNull());
     if (state() != PendingRequest)
         return;
 
     qDebug() << Q_FUNC_INFO;
 
-    mRequest = r;
-    connect(mRequest.data(), SIGNAL(succeeded(Tp::ChannelPtr)),
-            SLOT(channelRequestSucceeded(Tp::ChannelPtr)));
-    connect(mRequest.data(), SIGNAL(failed(QString,QString)),
-            SLOT(channelRequestFailed(QString,QString)));
+    mRequest = req;
+    connect(mRequest.data(), &Tp::ChannelRequest::succeeded,
+            this, &ConversationChannel::channelRequestSucceeded);
+    connect(mRequest.data(), &Tp::ChannelRequest::failed,
+            this, &ConversationChannel::channelRequestFailed);
 
-    mPendingRequest = 0;
+    mPendingRequest = nullptr;
     setState(Requested);
 }
 
@@ -196,8 +201,7 @@ void ConversationChannel::channelRequestSucceeded(const Tp::ChannelPtr &channel)
     addChannel(channel);
 }
 
-void ConversationChannel::channelRequestFailed(const QString &errorName,
-        const QString &errorMessage)
+void ConversationChannel::channelRequestFailed(const QString &errorName, const QString &errorMessage)
 {
     Q_ASSERT(state() == Requested);
 
@@ -208,8 +212,10 @@ void ConversationChannel::channelRequestFailed(const QString &errorName,
     qDebug() << Q_FUNC_INFO << errorName << errorMessage;
 }
 
-void ConversationChannel::channelReady()
+void ConversationChannel::channelReady(Tp::PendingOperation *op)
 {
+    Q_UNUSED(op)
+
     if (state() != PendingReady)
         return;
 
@@ -263,7 +269,8 @@ void ConversationChannel::messageReceived(const Tp::ReceivedMessage &message)
     Tp::TextChannelPtr textChannel(qobject_cast<Tp::TextChannel *>(sender()));
     QList<Tp::TextChannelPtr>::const_iterator it = std::find(mChannels.cbegin(), mChannels.cend(), textChannel);
     if (it == mChannels.end()) {
-        qWarning() << "Unexpected message:" << message.messageToken() << "received from unknown channel:" << textChannel->objectPath();
+        qWarning() << "Unexpected message:" << message.messageToken()
+                   << "received from unknown channel:" << textChannel->objectPath();
         return;
     }
 
@@ -304,7 +311,8 @@ void ConversationChannel::sendMessage(const Tp::MessagePartList &parts, int even
 
     Tp::PendingSendMessage *msg = textChannel->send(parts);
     mPendingSends.append(qMakePair(msg, eventId));
-    connect(msg, SIGNAL(finished(Tp::PendingOperation*)), SLOT(sendingFinished(Tp::PendingOperation*)));
+    connect(msg, &Tp::PendingSendMessage::finished,
+            this, &ConversationChannel::sendingFinished);
 
     if (!alreadyPending) {
         // If alreadyPending is false, this message was not previously buffered, so
@@ -371,7 +379,7 @@ int ConversationChannel::parseEventId(const Tp::MessagePartList &parts) const
 }
 
 void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,
-        const QString &errorName, const QString &errorMessage)
+                                             const QString &errorName, const QString &errorMessage)
 {
     Q_UNUSED(proxy);
 
@@ -393,7 +401,8 @@ void ConversationChannel::channelInvalidated(Tp::DBusProxy *proxy,
 void ConversationChannel::reportPendingFailed()
 {
     if (!mPendingMessages.isEmpty()) {
-        qDebug() << Q_FUNC_INFO << "Failed sending" << mPendingMessages.size() << "buffered messages to:" << mRemoteUid;
+        qDebug() << Q_FUNC_INFO << "Failed sending" << mPendingMessages.size()
+                 << "buffered messages to:" << mRemoteUid;
         QList<QPair<Tp::MessagePartList, int> > failed = mPendingMessages;
         mPendingMessages.clear();
 
@@ -430,4 +439,3 @@ void ConversationChannel::timerEvent(QTimerEvent *timerEvent)
         mSentEvents.clear();
     }
 }
-

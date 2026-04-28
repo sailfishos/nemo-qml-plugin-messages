@@ -41,12 +41,16 @@
 Q_DECLARE_METATYPE(Tp::AccountPtr)
 
 AccountsModel::AccountsModel(QObject *parent)
-    : QAbstractListModel(parent), mReady(false)
+    : QAbstractListModel(parent)
+    , mReady(false)
 {
     mAccountManager = Tp::AccountManager::create(Tp::AccountFactory::create(QDBusConnection::sessionBus(),
-                Tp::Account::FeatureCore));
-    connect(mAccountManager->becomeReady(), SIGNAL(finished(Tp::PendingOperation*)), SLOT(accountManagerReady(Tp::PendingOperation*)));
-    connect(mAccountManager.data(), SIGNAL(newAccount(Tp::AccountPtr)), SLOT(newAccount(Tp::AccountPtr)));
+                                                                            Tp::Account::FeatureCore));
+
+    connect(mAccountManager->becomeReady(), &Tp::PendingReady::finished,
+            this, &AccountsModel::accountManagerReady);
+    connect(mAccountManager.data(), &Tp::AccountManager::newAccount,
+            this, &AccountsModel::newAccount);
 }
 
 QHash<int,QByteArray> AccountsModel::roleNames() const
@@ -90,7 +94,7 @@ DeclarativeAccount *AccountsModel::getAccount(const QString &uid) const
 {
     int index = indexOfAccount(uid);
     if (index < 0)
-        return 0;
+        return nullptr;
 
     return new DeclarativeAccount(mAccounts[index]);
 }
@@ -99,8 +103,8 @@ int AccountsModel::rowCount(const QModelIndex &parent) const
 {
     if (parent.isValid())
         return 0;
-    else
-        return mAccounts.size();
+
+    return mAccounts.size();
 }
 
 QVariant AccountsModel::data(const QModelIndex &index, int role) const
@@ -113,13 +117,14 @@ QVariant AccountsModel::data(const QModelIndex &index, int role) const
     if (account.isNull())
         return QVariant();
 
-    switch (role)
-    {
-        case Qt::DisplayRole: return account->displayName();
-        case AccountPtrRole: return QVariant::fromValue(account);
-        case AccountUidRole: return account->objectPath();
+    switch (role) {
+    case Qt::DisplayRole:
+        return account->displayName();
+    case AccountPtrRole:
+        return QVariant::fromValue(account);
+    case AccountUidRole:
+        return account->objectPath();
     }
 
     return QVariant();
 }
-

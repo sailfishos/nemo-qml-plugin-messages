@@ -37,7 +37,6 @@
 class SmsCharacterCounter : public QObject
 {
     Q_OBJECT
-   
     Q_PROPERTY(QString text READ text WRITE setText NOTIFY textChanged)
     Q_PROPERTY(int messageCount READ messageCount NOTIFY messageCountChanged)
     Q_PROPERTY(int remainingCharacterCount READ remainingCharacterCount NOTIFY remainingCharacterCountChanged)
@@ -75,4 +74,3 @@ private:
 };
 
 #endif
-

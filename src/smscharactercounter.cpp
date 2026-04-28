@@ -305,4 +305,3 @@ bool SmsCharacterCounter::reencode(Encoding newEncoding)
 
     return false;
 }
-

@@ -85,6 +85,7 @@ void ChannelManager::setHandlerName(const QString &name)
     const QDBusConnection &dbus = QDBusConnection::sessionBus();
     if (registrar.isNull())
         registrar = ClientRegistrar::create(dbus);
+
     handler = AbstractClientPtr(new TpClientHandler(this));
     registrar->registerClient(handler, m_handlerName);
 
@@ -104,7 +105,8 @@ ConversationChannel *ChannelManager::getConversation(const QString &localUid, co
     }
 
     ConversationChannel *channel = new ConversationChannel(localUid, remoteUid, this);
-    connect(channel, SIGNAL(destroyed(QObject*)), SLOT(channelDestroyed(QObject*)));
+    connect(channel, &ConversationChannel::destroyed,
+            this, &ChannelManager::channelDestroyed);
     channels.append(channel);
 
     return channel;
@@ -169,4 +171,3 @@ void TpClientHandler::handleChannels(const MethodInvocationContextPtr<> &context
 
     context->setFinished();
 }
-
